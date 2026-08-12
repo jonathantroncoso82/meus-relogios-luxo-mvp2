@@ -1,19 +1,35 @@
-import client from './client';
-import type { ApiResponse, AuthResponse, User } from '../types';
+import apiClient from './client';
+import { ApiResponse, Usuario } from '../types';
+
+export interface LoginPayload {
+  email: string;
+  senha: string;
+}
+
+export interface RegisterPayload {
+  nome: string;
+  email: string;
+  senha: string;
+}
+
+export interface AuthData {
+  usuario: Usuario;
+  token: string;
+}
 
 export const authApi = {
-  register: async (data: { name: string; email: string; password: string }) => {
-    const res = await client.post<ApiResponse<AuthResponse>>('/auth/register', data);
-    return res.data;
+  login: async (payload: LoginPayload) => {
+    const { data } = await apiClient.post<ApiResponse<AuthData>>('/auth/login', payload);
+    return data;
   },
 
-  login: async (data: { email: string; password: string }) => {
-    const res = await client.post<ApiResponse<AuthResponse>>('/auth/login', data);
-    return res.data;
+  register: async (payload: RegisterPayload) => {
+    const { data } = await apiClient.post<ApiResponse<AuthData>>('/auth/register', payload);
+    return data;
   },
 
   me: async () => {
-    const res = await client.get<ApiResponse<User>>('/auth/me');
-    return res.data;
+    const { data } = await apiClient.get<ApiResponse<Usuario>>('/auth/me');
+    return data;
   },
 };

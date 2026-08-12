@@ -1,21 +1,29 @@
-import client from './client';
-import type { ApiResponse, Valuation } from '../types';
+import apiClient from './client';
+import { ApiResponse, Avaliacao, ValuationForm } from '../types';
 
 export const valuationsApi = {
-  getAll: async (watchId?: string) => {
-    const res = await client.get<ApiResponse<Valuation[]>>('/valuations', {
-      params: watchId ? { watchId } : undefined,
-    });
-    return res.data;
+  list: async (params?: { relogioId?: string }) => {
+    const { data } = await apiClient.get<ApiResponse<Avaliacao[]>>('/valuations', { params });
+    return data;
   },
 
-  getById: async (id: string) => {
-    const res = await client.get<ApiResponse<Valuation>>(`/valuations/${id}`);
-    return res.data;
+  get: async (id: string) => {
+    const { data } = await apiClient.get<ApiResponse<Avaliacao>>(`/valuations/${id}`);
+    return data;
   },
 
-  create: async (data: Partial<Valuation>) => {
-    const res = await client.post<ApiResponse<Valuation>>('/valuations', data);
-    return res.data;
+  create: async (payload: ValuationForm) => {
+    const { data } = await apiClient.post<ApiResponse<Avaliacao>>('/valuations', payload);
+    return data;
+  },
+
+  update: async (id: string, payload: Partial<ValuationForm>) => {
+    const { data } = await apiClient.put<ApiResponse<Avaliacao>>(`/valuations/${id}`, payload);
+    return data;
+  },
+
+  delete: async (id: string) => {
+    const { data } = await apiClient.delete<ApiResponse<null>>(`/valuations/${id}`);
+    return data;
   },
 };

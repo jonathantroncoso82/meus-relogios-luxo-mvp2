@@ -1,18 +1,21 @@
 import { Router } from 'express';
+import { authMiddleware } from '../middleware/auth';
 import {
-  getAllColecoes,
+  getColecoes,
   getColecaoById,
+  getColecaoRelogios,
   createColecao,
   updateColecao,
-  deleteColecao,
+  deleteColecao
 } from '../controllers/colecoes.controller';
 
 const router = Router();
 
-router.get('/', getAllColecoes);
-router.get('/:id', getColecaoById);
-router.post('/', createColecao);
-router.put('/:id', updateColecao);
-router.delete('/:id', deleteColecao);
+router.get('/colecoes', authMiddleware, getColecoes);
+router.get('/colecoes/:id', authMiddleware, getColecaoById);
+router.get('/colecoes/:id/relogios', authMiddleware, getColecaoRelogios);
+router.post('/colecoes', authMiddleware, createColecao);
+router.put('/colecoes/:id', authMiddleware, updateColecao);
+router.delete('/colecoes/:id', authMiddleware, deleteColecao);
 
 export default router;

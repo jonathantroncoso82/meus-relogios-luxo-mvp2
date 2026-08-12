@@ -1,181 +1,150 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { AuthRequest } from '../types';
 
 const prisma = new PrismaClient();
 
-export const getAllRelogios = async (req: Request, res: Response) => {
+export const getRelogios = async (req: AuthRequest, res: Response) => {
   try {
-    const relogios = await prisma.watch.findMany({
-      where: { active: true },
+    const relogios = await prisma.relogio.findMany({
+      where: { usuarioId: req.user?.id || req.userId },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+        marca: true,
+        colecao: true
+      }
     });
+
     res.json(relogios);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch relogios' });
+    res.status(500).json({ error: 'Erro ao buscar relógios' });
   }
 };
 
-export const getRelogioById = async (req: Request, res: Response) => {
+export const getRelogioById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const relogio = await prisma.watch.findUnique({
-      where: { id },
+
+    const relogio = await prisma.relogio.findUnique({
+      where: { id: parseInt(id) },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        maintenances: true,
-        insurances: true,
-        valuations: true,
-      },
+        marca: true,
+        colecao: true,
+        manutencoes: true,
+        seguros: true,
+        avaliacoes: true,
+        registrosServico: true
+      }
     });
+
     if (!relogio) {
-      return res.status(404).json({ error: 'Relogio not found' });
+      return res.status(404).json({ error: 'Relógio não encontrado' });
     }
+
+    if (relogio.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
     res.json(relogio);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch relogio' });
+    res.status(500).json({ error: 'Erro ao buscar relógio' });
   }
 };
 
-export const createRelogio = async (req: Request, res: Response) => {
+export const createRelogio = async (req: AuthRequest, res: Response) => {
   try {
-    const {
-      userId,
-      brand,
-      model,
-      reference,
-      yearProduction,
-      type,
-      material,
-      caseSize,
-      movement,
-      condition,
-      estimatedPrice,
-      description,
-      imageUrl,
-      acquisitionDate,
-    } = req.body;
+    const { marcaId, colecaoId, modelo, referencia, anoFabricacao, descricao, preco, condicao } = req.body;
 
-    if (!userId || !brand || !model) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!marcaId || !modelo || !preco) {
+      return res.status(400).json({ error: 'Campos obrigatórios faltando' });
     }
 
-    const relogio = await prisma.watch.create({
+    const relogio = await prisma.relogio.create({
       data: {
-        userId,
-        brand,
-        model,
-        reference,
-        yearProduction,
-        type,
-        material,
-        caseSize,
-        movement,
-        condition,
-        estimatedPrice: estimatedPrice ? parseFloat(estimatedPrice) : null,
-        description,
-        imageUrl,
-        acquisitionDate: acquisitionDate ? new Date(acquisitionDate) : null,
+        usuarioId: req.user?.id || req.userId || 0,
+        marcaId,
+        colecaoId: colecaoId || null,
+        modelo,
+        referencia,
+        anoFabricacao: anoFabricacao ? parseInt(anoFabricacao) : null,
+        descricao,
+        preco: parseFloat(preco),
+        condicao: condicao || 'novo'
       },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+        marca: true,
+        colecao: true
+      }
     });
+
     res.status(201).json(relogio);
-  } catch (error: any) {
-    if (error.code === 'P2003') {
-      return res.status(400).json({ error: 'User not found' });
-    }
-    res.status(500).json({ error: 'Failed to create relogio' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar relógio' });
   }
 };
 
-export const updateRelogio = async (req: Request, res: Response) => {
+export const updateRelogio = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const {
-      brand,
-      model,
-      reference,
-      yearProduction,
-      type,
-      material,
-      caseSize,
-      movement,
-      condition,
-      estimatedPrice,
-      description,
-      imageUrl,
-      acquisitionDate,
-    } = req.body;
+    const { marcaId, colecaoId, modelo, referencia, anoFabricacao, descricao, preco, condicao } = req.body;
 
-    const relogio = await prisma.watch.update({
-      where: { id },
+    const relogio = await prisma.relogio.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!relogio) {
+      return res.status(404).json({ error: 'Relógio não encontrado' });
+    }
+
+    if (relogio.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    const updated = await prisma.relogio.update({
+      where: { id: parseInt(id) },
       data: {
-        ...(brand && { brand }),
-        ...(model && { model }),
-        ...(reference && { reference }),
-        ...(yearProduction && { yearProduction }),
-        ...(type && { type }),
-        ...(material && { material }),
-        ...(caseSize && { caseSize }),
-        ...(movement && { movement }),
-        ...(condition && { condition }),
-        ...(estimatedPrice && { estimatedPrice: parseFloat(estimatedPrice) }),
-        ...(description && { description }),
-        ...(imageUrl && { imageUrl }),
-        ...(acquisitionDate && { acquisitionDate: new Date(acquisitionDate) }),
+        ...(marcaId && { marcaId }),
+        ...(colecaoId !== undefined && { colecaoId: colecaoId || null }),
+        ...(modelo && { modelo }),
+        ...(referencia !== undefined && { referencia }),
+        ...(anoFabricacao !== undefined && { anoFabricacao: anoFabricacao ? parseInt(anoFabricacao) : null }),
+        ...(descricao !== undefined && { descricao }),
+        ...(preco && { preco: parseFloat(preco) }),
+        ...(condicao && { condicao })
       },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+        marca: true,
+        colecao: true
+      }
     });
-    res.json(relogio);
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Relogio not found' });
-    }
-    res.status(500).json({ error: 'Failed to update relogio' });
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar relógio' });
   }
 };
 
-export const deleteRelogio = async (req: Request, res: Response) => {
+export const deleteRelogio = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    await prisma.watch.update({
-      where: { id },
-      data: { active: false },
+
+    const relogio = await prisma.relogio.findUnique({
+      where: { id: parseInt(id) }
     });
-    res.json({ message: 'Relogio deleted successfully' });
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Relogio not found' });
+
+    if (!relogio) {
+      return res.status(404).json({ error: 'Relógio não encontrado' });
     }
-    res.status(500).json({ error: 'Failed to delete relogio' });
+
+    if (relogio.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    await prisma.relogio.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: 'Relógio deletado com sucesso' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao deletar relógio' });
   }
 };

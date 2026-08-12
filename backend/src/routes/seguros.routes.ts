@@ -1,18 +1,19 @@
 import { Router } from 'express';
+import { authMiddleware } from '../middleware/auth';
 import {
-  getAllSeguros,
+  getSeguros,
   getSeguroById,
   createSeguro,
   updateSeguro,
-  deleteSeguro,
+  deleteSeguro
 } from '../controllers/seguros.controller';
 
 const router = Router();
 
-router.get('/', getAllSeguros);
-router.get('/:id', getSeguroById);
-router.post('/', createSeguro);
-router.put('/:id', updateSeguro);
-router.delete('/:id', deleteSeguro);
+router.get('/seguros', authMiddleware, getSeguros);
+router.get('/seguros/:id', authMiddleware, getSeguroById);
+router.post('/seguros', authMiddleware, createSeguro);
+router.put('/seguros/:id', authMiddleware, updateSeguro);
+router.delete('/seguros/:id', authMiddleware, deleteSeguro);
 
 export default router;

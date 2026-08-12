@@ -1,116 +1,116 @@
-export interface User {
+// ============================================================
+// Entidades do domínio
+// ============================================================
+
+export interface Usuario {
   id: string;
-  name: string;
+  nome: string;
   email: string;
-  avatarUrl?: string;
-  createdAt: string;
+  criadoEm: string;
 }
 
-export interface Brand {
+export interface Marca {
   id: string;
-  name: string;
-  country?: string;
-  foundedYear?: number;
-  website?: string;
+  nome: string;
+  paisOrigem?: string;
+  descricao?: string;
   logoUrl?: string;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-  _count?: { watches: number };
+  usuarioId: string;
+  criadoEm: string;
+  atualizadoEm: string;
+  _count?: { relogios: number };
 }
 
-export interface Collection {
+export interface Colecao {
   id: string;
-  userId: string;
-  name: string;
-  description?: string;
-  isPublic: boolean;
-  createdAt: string;
-  updatedAt: string;
-  _count?: { watches: number };
-  watches?: Watch[];
+  nome: string;
+  descricao?: string;
+  usuarioId: string;
+  criadoEm: string;
+  atualizadoEm: string;
+  _count?: { relogios: number };
 }
 
-export type WatchCondition = 'mint' | 'excellent' | 'very_good' | 'good' | 'fair' | 'poor';
-export type MovementType = 'automatic' | 'manual' | 'quartz' | 'solar' | 'kinetic' | 'spring_drive' | 'other';
-export type GenderType = 'mens' | 'womens' | 'unisex';
-export type AcquisitionType = 'purchased' | 'gifted' | 'inherited' | 'traded' | 'other';
-
-export interface WatchImage {
+export interface Relogio {
   id: string;
-  watchId: string;
-  url: string;
-  caption?: string;
-  isPrimary: boolean;
-  sortOrder: number;
-  createdAt: string;
+  usuarioId: string;
+  marcaId?: string;
+  colecaoId?: string;
+  modelo: string;
+  referencia?: string;
+  numeroSerie?: string;
+  anoFabricacao?: number;
+  movimento?: string;
+  caixaMaterial?: string;
+  caixaDiametroMm?: number;
+  pulseiraMaterial?: string;
+  corMostrador?: string;
+  condicao: string;
+  precoCompra?: number;
+  dataCompra?: string;
+  localCompra?: string;
+  notas?: string;
+  imagemUrl?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+  marca?: Pick<Marca, 'id' | 'nome'>;
+  colecao?: Pick<Colecao, 'id' | 'nome'>;
+  manutencoes?: Manutencao[];
+  seguros?: Seguro[];
+  avaliacoes?: Avaliacao[];
 }
 
-export interface Watch {
+export interface Manutencao {
   id: string;
-  userId: string;
-  brandId: string;
-  collectionId?: string;
-  movementId?: string;
-  model: string;
-  referenceNumber?: string;
-  serialNumber?: string;
-  yearManufactured?: number;
-  dialColor?: string;
-  caseMaterial?: string;
-  caseDiameterMm?: number;
-  braceletMaterial?: string;
-  waterResistanceM?: number;
-  gender: GenderType;
-  condition: WatchCondition;
-  acquisitionType: AcquisitionType;
-  acquisitionDate?: string;
-  acquisitionPrice?: number;
-  acquisitionCurrency?: string;
-  currentValue?: number;
-  notes?: string;
-  isForSale: boolean;
-  askingPrice?: number;
-  createdAt: string;
-  updatedAt: string;
-  brand?: Pick<Brand, 'id' | 'name' | 'logoUrl'>;
-  collection?: Pick<Collection, 'id' | 'name'>;
-  images?: WatchImage[];
-  serviceRecords?: ServiceRecord[];
-  valuations?: Valuation[];
+  relogioId: string;
+  usuarioId: string;
+  tipo: string;
+  descricao?: string;
+  dataServico: string;
+  custo?: number;
+  prestador?: string;
+  proximoServico?: string;
+  notas?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+  relogio?: Pick<Relogio, 'id' | 'modelo'>;
 }
 
-export interface ServiceRecord {
+export interface Seguro {
   id: string;
-  watchId: string;
-  serviceDate: string;
-  serviceType: string;
-  serviceCenter?: string;
-  technician?: string;
-  cost?: number;
-  currency?: string;
-  description?: string;
-  nextServiceDate?: string;
-  warrantyUntil?: string;
-  createdAt: string;
-  updatedAt: string;
-  watch?: Pick<Watch, 'id' | 'model'> & { brand?: Pick<Brand, 'name'> };
+  relogioId: string;
+  usuarioId: string;
+  seguradora: string;
+  numeroApolice?: string;
+  valorSegurado: number;
+  premioAnual?: number;
+  dataInicio: string;
+  dataVencimento: string;
+  cobertura?: string;
+  notas?: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+  relogio?: Pick<Relogio, 'id' | 'modelo'>;
 }
 
-export interface Valuation {
+export interface Avaliacao {
   id: string;
-  watchId: string;
-  valuationDate: string;
-  appraiser?: string;
-  marketValue: number;
-  currency?: string;
-  source?: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-  watch?: Pick<Watch, 'id' | 'model'> & { brand?: Pick<Brand, 'name'> };
+  relogioId: string;
+  usuarioId: string;
+  valorAvaliado: number;
+  dataAvaliacao: string;
+  avaliador?: string;
+  metodo?: string;
+  notas?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+  relogio?: Pick<Relogio, 'id' | 'modelo'>;
 }
 
+// ============================================================
+// API Response
+// ============================================================
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -118,7 +118,96 @@ export interface ApiResponse<T> {
   errors?: unknown[];
 }
 
-export interface AuthResponse {
-  user: User;
-  token: string;
+// ============================================================
+// Auth
+// ============================================================
+export interface AuthState {
+  token: string | null;
+  usuario: Usuario | null;
+  isAuthenticated: boolean;
+  login: (token: string, usuario: Usuario) => void;
+  logout: () => void;
+}
+
+// ============================================================
+// Forms
+// ============================================================
+export interface LoginForm {
+  email: string;
+  senha: string;
+}
+
+export interface RegisterForm {
+  nome: string;
+  email: string;
+  senha: string;
+}
+
+export interface WatchForm {
+  modelo: string;
+  marcaId?: string;
+  colecaoId?: string;
+  referencia?: string;
+  numeroSerie?: string;
+  anoFabricacao?: number;
+  movimento?: string;
+  caixaMaterial?: string;
+  caixaDiametroMm?: number;
+  pulseiraMaterial?: string;
+  corMostrador?: string;
+  condicao: string;
+  precoCompra?: number;
+  dataCompra?: string;
+  localCompra?: string;
+  notas?: string;
+  imagemUrl?: string;
+}
+
+export interface BrandForm {
+  nome: string;
+  paisOrigem?: string;
+  descricao?: string;
+  logoUrl?: string;
+}
+
+export interface CollectionForm {
+  nome: string;
+  descricao?: string;
+}
+
+export interface ServiceRecordForm {
+  relogioId: string;
+  tipo: string;
+  descricao?: string;
+  dataServico: string;
+  custo?: number;
+  prestador?: string;
+  proximoServico?: string;
+  notas?: string;
+}
+
+export interface ValuationForm {
+  relogioId: string;
+  valorAvaliado: number;
+  dataAvaliacao: string;
+  avaliador?: string;
+  metodo?: string;
+  notas?: string;
+}
+
+// ============================================================
+// Dashboard
+// ============================================================
+export interface DashboardData {
+  resumo: {
+    totalRelogios: number;
+    totalMarcas: number;
+    totalColecoes: number;
+    totalManutencoes: number;
+    totalSeguros: number;
+    totalAvaliacoes: number;
+    valorTotalColecao: number;
+  };
+  relogiosRecentes: Relogio[];
+  ultimasAvaliacoes: Avaliacao[];
 }

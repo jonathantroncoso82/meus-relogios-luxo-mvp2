@@ -1,28 +1,40 @@
 import axios from 'axios';
 
-const client = axios.create({
+const apiClient = axios.create({
   baseURL: '/api',
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 15000,
 });
 
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('luxwatch_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Request interceptor — inject JWT
+apiClient.interceptors.request.use((config) => {
+  const raw = localStorage.getItem('auth-storage');
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { state?: { token?: string } };
+      const token = parsed?.state?.token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch {
+      // ignore
+    }
   }
   return config;
 });
 
-client.interceptors.response.use(
+// Response interceptor — handle 401
+apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('luxwatch_token');
-      localStorage.removeItem('luxwatch_user');
+      localStorage.removeItem('auth-storage');
       window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-export default client;
+export default apiClient;

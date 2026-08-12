@@ -1,17 +1,11 @@
-CREATE TABLE usuarios (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email VARCHAR(255) UNIQUE NOT NULL,
-  senha VARCHAR(255) NOT NULL,
-  nome VARCHAR(255) NOT NULL,
-  telefone VARCHAR(20),
-  endereco TEXT,
-  cidade VARCHAR(100),
-  estado VARCHAR(2),
-  cep VARCHAR(10),
-  data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  ativo BOOLEAN DEFAULT true
-);
+-- Migration 001: Criar tabela de usuários
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE INDEX idx_usuarios_email ON usuarios(email);
-CREATE INDEX idx_usuarios_ativo ON usuarios(ativo);
+CREATE TABLE IF NOT EXISTS usuarios (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome          VARCHAR(150) NOT NULL,
+    email         VARCHAR(255) NOT NULL UNIQUE,
+    senha_hash    VARCHAR(255) NOT NULL,
+    criado_em     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    atualizado_em TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);

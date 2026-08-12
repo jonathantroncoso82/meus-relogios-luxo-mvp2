@@ -1,33 +1,19 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
+import { authMiddleware } from '../middleware/auth';
 import {
   getCollections,
-  getCollection,
+  getCollectionById,
   createCollection,
   updateCollection,
-  deleteCollection,
-} from '../controllers/collections.controller.js';
-import { authenticate } from '../middleware/auth.js';
+  deleteCollection
+} from '../controllers/collections.controller';
 
 const router = Router();
 
-router.use(authenticate);
-
-router.get('/', getCollections);
-router.get('/:id', getCollection);
-
-router.post(
-  '/',
-  [body('name').trim().notEmpty().withMessage('Collection name is required')],
-  createCollection
-);
-
-router.put(
-  '/:id',
-  [body('name').optional().trim().notEmpty().withMessage('Collection name cannot be empty')],
-  updateCollection
-);
-
-router.delete('/:id', deleteCollection);
+router.get('/collections', authMiddleware, getCollections);
+router.get('/collections/:id', authMiddleware, getCollectionById);
+router.post('/collections', authMiddleware, createCollection);
+router.put('/collections/:id', authMiddleware, updateCollection);
+router.delete('/collections/:id', authMiddleware, deleteCollection);
 
 export default router;

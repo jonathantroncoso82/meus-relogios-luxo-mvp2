@@ -1,237 +1,150 @@
-import { Response, NextFunction } from 'express';
-import { validationResult } from 'express-validator';
-import prisma from '../config/database.js';
-import { AuthRequest } from '../types/index.js';
+import { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { AuthRequest } from '../types';
 
-export async function getWatches(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+const prisma = new PrismaClient();
+
+export const getWatches = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user!.userId;
-    const { search, brandId, collectionId } = req.query as {
-      search?: string;
-      brandId?: string;
-      collectionId?: string;
-    };
-
-    const watches = await prisma.watch.findMany({
-      where: {
-        userId,
-        ...(brandId ? { brandId } : {}),
-        ...(collectionId ? { collectionId } : {}),
-        ...(search
-          ? {
-              OR: [
-                { model: { contains: search, mode: 'insensitive' } },
-                { referenceNumber: { contains: search, mode: 'insensitive' } },
-                { serialNumber: { contains: search, mode: 'insensitive' } },
-              ],
-            }
-          : {}),
-      },
+    const watches = await prisma.relogio.findMany({
+      where: { usuarioId: req.user?.id || req.userId },
       include: {
-        brand: { select: { id: true, name: true, logoUrl: true } },
-        collection: { select: { id: true, name: true } },
-        images: { where: { isPrimary: true }, take: 1 },
-      },
-      orderBy: { createdAt: 'desc' },
+        marca: true,
+        colecao: true
+      }
     });
 
-    res.json({ success: true, data: watches });
-  } catch (err) {
-    next(err);
+    res.json(watches);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar relógios' });
   }
-}
+};
 
-export async function getWatch(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export const getWatchById = async (req: AuthRequest, res: Response) => {
   try {
-    const watch = await prisma.watch.findFirst({
-      where: { id: req.params.id, userId: req.user!.userId },
+    const { id } = req.params;
+
+    const watch = await prisma.relogio.findUnique({
+      where: { id: parseInt(id) },
       include: {
-        brand: true,
-        collection: true,
-        movement: true,
-        images: { orderBy: { sortOrder: 'asc' } },
-        serviceRecords: { orderBy: { serviceDate: 'desc' } },
-        valuations: { orderBy: { valuationDate: 'desc' } },
-      },
+        marca: true,
+        colecao: true,
+        manutencoes: true,
+        seguros: true,
+        avaliacoes: true,
+        registrosServico: true
+      }
     });
 
     if (!watch) {
-      res.status(404).json({ success: false, message: 'Watch not found' });
-      return;
+      return res.status(404).json({ error: 'Relógio não encontrado' });
     }
 
-    res.json({ success: true, data: watch });
-  } catch (err) {
-    next(err);
+    if (watch.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    res.json(watch);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar relógio' });
   }
-}
+};
 
-export async function createWatch(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export const createWatch = async (req: AuthRequest, res: Response) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(422).json({ success: false, errors: errors.array() });
-      return;
+    const { marcaId, colecaoId, modelo, referencia, anoFabricacao, descricao, preco, condicao } = req.body;
+
+    if (!marcaId || !modelo || !preco) {
+      return res.status(400).json({ error: 'Campos obrigatórios faltando' });
     }
 
-    const userId = req.user!.userId;
-    const {
-      brandId,
-      collectionId,
-      movementId,
-      model,
-      referenceNumber,
-      serialNumber,
-      yearManufactured,
-      dialColor,
-      caseMaterial,
-      caseDiameterMm,
-      braceletMaterial,
-      waterResistanceM,
-      gender,
-      condition,
-      acquisitionType,
-      acquisitionDate,
-      acquisitionPrice,
-      acquisitionCurrency,
-      currentValue,
-      notes,
-      isForSale,
-      askingPrice,
-    } = req.body;
-
-    const watch = await prisma.watch.create({
+    const watch = await prisma.relogio.create({
       data: {
-        userId,
-        brandId,
-        collectionId,
-        movementId,
-        model,
-        referenceNumber,
-        serialNumber,
-        yearManufactured,
-        dialColor,
-        caseMaterial,
-        caseDiameterMm,
-        braceletMaterial,
-        waterResistanceM,
-        gender,
-        condition,
-        acquisitionType,
-        acquisitionDate: acquisitionDate ? new Date(acquisitionDate) : undefined,
-        acquisitionPrice,
-        acquisitionCurrency,
-        currentValue,
-        notes,
-        isForSale: isForSale ?? false,
-        askingPrice,
+        usuarioId: req.user?.id || req.userId || 0,
+        marcaId,
+        colecaoId: colecaoId || null,
+        modelo,
+        referencia,
+        anoFabricacao: anoFabricacao ? parseInt(anoFabricacao) : null,
+        descricao,
+        preco: parseFloat(preco),
+        condicao: condicao || 'novo'
       },
       include: {
-        brand: { select: { id: true, name: true } },
-        collection: { select: { id: true, name: true } },
-      },
+        marca: true,
+        colecao: true
+      }
     });
 
-    res.status(201).json({ success: true, data: watch });
-  } catch (err) {
-    next(err);
+    res.status(201).json(watch);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar relógio' });
   }
-}
+};
 
-export async function updateWatch(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export const updateWatch = async (req: AuthRequest, res: Response) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(422).json({ success: false, errors: errors.array() });
-      return;
-    }
+    const { id } = req.params;
+    const { marcaId, colecaoId, modelo, referencia, anoFabricacao, descricao, preco, condicao } = req.body;
 
-    const existing = await prisma.watch.findFirst({
-      where: { id: req.params.id, userId: req.user!.userId },
+    const watch = await prisma.relogio.findUnique({
+      where: { id: parseInt(id) }
     });
 
-    if (!existing) {
-      res.status(404).json({ success: false, message: 'Watch not found' });
-      return;
+    if (!watch) {
+      return res.status(404).json({ error: 'Relógio não encontrado' });
     }
 
-    const {
-      brandId,
-      collectionId,
-      movementId,
-      model,
-      referenceNumber,
-      serialNumber,
-      yearManufactured,
-      dialColor,
-      caseMaterial,
-      caseDiameterMm,
-      braceletMaterial,
-      waterResistanceM,
-      gender,
-      condition,
-      acquisitionType,
-      acquisitionDate,
-      acquisitionPrice,
-      acquisitionCurrency,
-      currentValue,
-      notes,
-      isForSale,
-      askingPrice,
-    } = req.body;
+    if (watch.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
 
-    const watch = await prisma.watch.update({
-      where: { id: req.params.id },
+    const updated = await prisma.relogio.update({
+      where: { id: parseInt(id) },
       data: {
-        brandId,
-        collectionId,
-        movementId,
-        model,
-        referenceNumber,
-        serialNumber,
-        yearManufactured,
-        dialColor,
-        caseMaterial,
-        caseDiameterMm,
-        braceletMaterial,
-        waterResistanceM,
-        gender,
-        condition,
-        acquisitionType,
-        acquisitionDate: acquisitionDate ? new Date(acquisitionDate) : undefined,
-        acquisitionPrice,
-        acquisitionCurrency,
-        currentValue,
-        notes,
-        isForSale,
-        askingPrice,
+        ...(marcaId && { marcaId }),
+        ...(colecaoId !== undefined && { colecaoId: colecaoId || null }),
+        ...(modelo && { modelo }),
+        ...(referencia !== undefined && { referencia }),
+        ...(anoFabricacao !== undefined && { anoFabricacao: anoFabricacao ? parseInt(anoFabricacao) : null }),
+        ...(descricao !== undefined && { descricao }),
+        ...(preco && { preco: parseFloat(preco) }),
+        ...(condicao && { condicao })
       },
       include: {
-        brand: { select: { id: true, name: true } },
-        collection: { select: { id: true, name: true } },
-      },
+        marca: true,
+        colecao: true
+      }
     });
 
-    res.json({ success: true, data: watch });
-  } catch (err) {
-    next(err);
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar relógio' });
   }
-}
+};
 
-export async function deleteWatch(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export const deleteWatch = async (req: AuthRequest, res: Response) => {
   try {
-    const existing = await prisma.watch.findFirst({
-      where: { id: req.params.id, userId: req.user!.userId },
+    const { id } = req.params;
+
+    const watch = await prisma.relogio.findUnique({
+      where: { id: parseInt(id) }
     });
 
-    if (!existing) {
-      res.status(404).json({ success: false, message: 'Watch not found' });
-      return;
+    if (!watch) {
+      return res.status(404).json({ error: 'Relógio não encontrado' });
     }
 
-    await prisma.watch.delete({ where: { id: req.params.id } });
-    res.json({ success: true, message: 'Watch deleted' });
-  } catch (err) {
-    next(err);
+    if (watch.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    await prisma.relogio.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: 'Relógio deletado com sucesso' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao deletar relógio' });
   }
-}
+};

@@ -1,33 +1,19 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
+import { authMiddleware } from '../middleware/auth';
 import {
   getBrands,
-  getBrand,
+  getBrandById,
   createBrand,
   updateBrand,
-  deleteBrand,
-} from '../controllers/brands.controller.js';
-import { authenticate } from '../middleware/auth.js';
+  deleteBrand
+} from '../controllers/brands.controller';
 
 const router = Router();
 
-router.use(authenticate);
-
-router.get('/', getBrands);
-router.get('/:id', getBrand);
-
-router.post(
-  '/',
-  [body('name').trim().notEmpty().withMessage('Brand name is required')],
-  createBrand
-);
-
-router.put(
-  '/:id',
-  [body('name').optional().trim().notEmpty().withMessage('Brand name cannot be empty')],
-  updateBrand
-);
-
-router.delete('/:id', deleteBrand);
+router.get('/brands', getBrands);
+router.get('/brands/:id', getBrandById);
+router.post('/brands', authMiddleware, createBrand);
+router.put('/brands/:id', authMiddleware, updateBrand);
+router.delete('/brands/:id', authMiddleware, deleteBrand);
 
 export default router;

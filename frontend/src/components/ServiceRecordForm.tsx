@@ -1,157 +1,127 @@
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useQuery } from '@tanstack/react-query';
-import { watchesApi } from '../api/watches';
-import type { ServiceRecord } from '../types';
+import { ServiceRecordForm as ServiceRecordFormType, Relogio } from '../types';
 
 interface Props {
-  defaultValues?: Partial<ServiceRecord>;
-  onSubmit: (data: Partial<ServiceRecord>) => void;
+  defaultValues?: Partial<ServiceRecordFormType>;
+  relogios: Relogio[];
+  onSubmit: (data: ServiceRecordFormType) => void;
   onCancel: () => void;
-  loading?: boolean;
-  watchId?: string;
+  isLoading?: boolean;
+  fixedRelogioId?: string;
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  background: '#111',
-  border: '1px solid #333',
-  borderRadius: 8,
-  padding: '10px 12px',
-  color: '#e5e5e5',
-  fontSize: 14,
-  outline: 'none',
-};
+const TIPOS = ['Revisão Geral', 'Limpeza', 'Troca de Bateria', 'Regulagem', 'Polimento', 'Troca de Pulseira', 'Reparação', 'Outro'];
 
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 12,
-  color: '#888',
-  marginBottom: 6,
-  fontWeight: 500,
-};
-
-const fieldStyle: React.CSSProperties = { marginBottom: 16 };
-
-const gridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: 16,
-};
-
-export default function ServiceRecordForm({ defaultValues, onSubmit, onCancel, loading, watchId }: Props) {
-  const { register, handleSubmit } = useForm<Partial<ServiceRecord>>({
-    defaultValues: { ...defaultValues, watchId: watchId ?? defaultValues?.watchId },
+const ServiceRecordForm: React.FC<Props> = ({ defaultValues, relogios, onSubmit, onCancel, isLoading, fixedRelogioId }) => {
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<ServiceRecordFormType>({
+    defaultValues: { relogioId: fixedRelogioId, ...defaultValues },
   });
 
-  const { data: watchesData } = useQuery({
-    queryKey: ['watches'],
-    queryFn: () => watchesApi.getAll(),
-    enabled: !watchId,
-  });
-
-  const watches = watchesData?.data ?? [];
+  useEffect(() => {
+    reset({ relogioId: fixedRelogioId, ...defaultValues });
+  }, [defaultValues, fixedRelogioId, reset]);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      {!watchId && (
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Watch *</label>
-          <select style={inputStyle} {...register('watchId', { required: true })}>
-            <option value="">Select watch</option>
-            {watches.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.brand?.name} {w.model} {w.referenceNumber ? `(${w.referenceNumber})` : ''}
-              </option>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {!fixedRelogioId && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Relógio *</label>
+          <select
+            {...register('relogioId', { required: 'Selecione um relógio' })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            <option value="">Selecionar relógio...</option>
+            {relogios.map((r) => (
+              <option key={r.id} value={r.id}>{r.modelo} {r.referencia ? `(${r.referencia})` : ''}</option>
             ))}
           </select>
+          {errors.relogioId && <p className="text-red-500 text-xs mt-1">{errors.relogioId.message}</p>}
         </div>
       )}
 
-      <div style={gridStyle}>
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Service Date *</label>
-          <input style={inputStyle} type="date" {...register('serviceDate', { required: true })} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
+          <select
+            {...register('tipo', { required: 'Tipo é obrigatório' })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            <option value="">Selecionar tipo...</option>
+            {TIPOS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          {errors.tipo && <p className="text-red-500 text-xs mt-1">{errors.tipo.message}</p>}
         </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Service Type *</label>
-          <input style={inputStyle} {...register('serviceType', { required: true })} placeholder="e.g. Full Service" />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data do Serviço *</label>
+          <input
+            type="date"
+            {...register('dataServico', { required: 'Data é obrigatória' })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          {errors.dataServico && <p className="text-red-500 text-xs mt-1">{errors.dataServico.message}</p>}
         </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Service Center</label>
-          <input style={inputStyle} {...register('serviceCenter')} placeholder="e.g. Rolex Service Center" />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Custo (€)</label>
+          <input
+            type="number"
+            step="0.01"
+            {...register('custo', { min: 0 })}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
         </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Technician</label>
-          <input style={inputStyle} {...register('technician')} placeholder="Technician name" />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Prestador</label>
+          <input
+            {...register('prestador')}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            placeholder="Ex: Centro de Serviço Oficial"
+          />
         </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Cost</label>
-          <input style={inputStyle} type="number" step="0.01" {...register('cost', { valueAsNumber: true })} placeholder="e.g. 800" />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Próximo Serviço</label>
+          <input
+            type="date"
+            {...register('proximoServico')}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
         </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Currency</label>
-          <input style={inputStyle} {...register('currency')} placeholder="USD" defaultValue="USD" />
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+          <textarea
+            {...register('descricao')}
+            rows={2}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
         </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Next Service Date</label>
-          <input style={inputStyle} type="date" {...register('nextServiceDate')} />
-        </div>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Warranty Until</label>
-          <input style={inputStyle} type="date" {...register('warrantyUntil')} />
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+          <textarea
+            {...register('notas')}
+            rows={2}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
         </div>
       </div>
 
-      <div style={fieldStyle}>
-        <label style={labelStyle}>Description</label>
-        <textarea
-          style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
-          {...register('description')}
-          placeholder="Service details..."
-        />
-      </div>
-
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-        <button
-          type="button"
-          onClick={onCancel}
-          style={{
-            padding: '10px 20px',
-            background: 'none',
-            border: '1px solid #333',
-            borderRadius: 8,
-            color: '#888',
-            cursor: 'pointer',
-            fontSize: 14,
-          }}
-        >
-          Cancel
+      <div className="flex justify-end gap-3 pt-2">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          Cancelar
         </button>
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            padding: '10px 24px',
-            background: '#c9a84c',
-            border: 'none',
-            borderRadius: 8,
-            color: '#000',
-            fontWeight: 700,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: 14,
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading ? 'Saving…' : 'Save Record'}
+        <button type="submit" disabled={isLoading} className="px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors">
+          {isLoading ? 'A guardar...' : 'Guardar'}
         </button>
       </div>
     </form>
   );
-}
+};
+
+export default ServiceRecordForm;

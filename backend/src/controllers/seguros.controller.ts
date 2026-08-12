@@ -1,197 +1,168 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { AuthRequest } from '../types';
 
 const prisma = new PrismaClient();
 
-export const getAllSeguros = async (req: Request, res: Response) => {
+export const getSeguros = async (req: AuthRequest, res: Response) => {
   try {
-    const seguros = await prisma.insurance.findMany({
-      where: { active: true },
+    const { relogioId } = req.query;
+    
+    const where: any = { usuarioId: req.user?.id || req.userId };
+    if (relogioId) {
+      where.relogioId = parseInt(relogioId as string);
+    }
+
+    const seguros = await prisma.seguro.findMany({
+      where,
       include: {
-        watch: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+        relogio: {
+          include: {
+            marca: true
+          }
+        }
       },
+      orderBy: { dataInicio: 'desc' }
     });
+
     res.json(seguros);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch seguros' });
+    res.status(500).json({ error: 'Erro ao buscar seguros' });
   }
 };
 
-export const getSeguroById = async (req: Request, res: Response) => {
+export const getSeguroById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const seguro = await prisma.insurance.findUnique({
-      where: { id },
+
+    const seguro = await prisma.seguro.findUnique({
+      where: { id: parseInt(id) },
       include: {
-        watch: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+        relogio: {
+          include: {
+            marca: true
+          }
+        }
+      }
     });
+
     if (!seguro) {
-      return res.status(404).json({ error: 'Seguro not found' });
+      return res.status(404).json({ error: 'Seguro não encontrado' });
     }
+
+    if (seguro.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
     res.json(seguro);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch seguro' });
+    res.status(500).json({ error: 'Erro ao buscar seguro' });
   }
 };
 
-export const createSeguro = async (req: Request, res: Response) => {
+export const createSeguro = async (req: AuthRequest, res: Response) => {
   try {
-    const {
-      watchId,
-      userId,
-      policyNumber,
-      insurer,
-      coverageValue,
-      annualPremium,
-      startDate,
-      expirationDate,
-      status,
-      coverageType,
-      deductible,
-      notes,
-    } = req.body;
+    const { relogioId, numero, valor, dataInicio, dataFim } = req.body;
 
-    if (!watchId || !userId || !policyNumber || !insurer || !coverageValue || !startDate || !expirationDate) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!relogioId || !numero || !valor || !dataInicio || !dataFim) {
+      return res.status(400).json({ error: 'Campos obrigatórios faltando' });
     }
 
-    const seguro = await prisma.insurance.create({
+    // Verificar se o relógio pertence ao usuário
+    const relogio = await prisma.relogio.findUnique({
+      where: { id: relogioId }
+    });
+
+    if (!relogio || relogio.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Relógio não encontrado ou acesso negado' });
+    }
+
+    const seguro = await prisma.seguro.create({
       data: {
-        watchId,
-        userId,
-        policyNumber,
-        insurer,
-        coverageValue: parseFloat(coverageValue),
-        annualPremium: annualPremium ? parseFloat(annualPremium) : null,
-        startDate: new Date(startDate),
-        expirationDate: new Date(expirationDate),
-        status: status || 'ativo',
-        coverageType,
-        deductible: deductible ? parseFloat(deductible) : null,
-        notes,
+        relogioId,
+        usuarioId: req.user?.id || req.userId || 0,
+        numero,
+        valor: parseFloat(valor),
+        dataInicio: new Date(dataInicio),
+        dataFim: new Date(dataFim)
       },
       include: {
-        watch: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+        relogio: {
+          include: {
+            marca: true
+          }
+        }
+      }
     });
+
     res.status(201).json(seguro);
-  } catch (error: any) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Policy number already exists' });
-    }
-    if (error.code === 'P2003') {
-      return res.status(400).json({ error: 'Watch or User not found' });
-    }
-    res.status(500).json({ error: 'Failed to create seguro' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar seguro' });
   }
 };
 
-export const updateSeguro = async (req: Request, res: Response) => {
+export const updateSeguro = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const {
-      insurer,
-      coverageValue,
-      annualPremium,
-      startDate,
-      expirationDate,
-      status,
-      coverageType,
-      deductible,
-      notes,
-    } = req.body;
+    const { numero, valor, dataInicio, dataFim } = req.body;
 
-    const seguro = await prisma.insurance.update({
-      where: { id },
+    const seguro = await prisma.seguro.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!seguro) {
+      return res.status(404).json({ error: 'Seguro não encontrado' });
+    }
+
+    if (seguro.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    const updated = await prisma.seguro.update({
+      where: { id: parseInt(id) },
       data: {
-        ...(insurer && { insurer }),
-        ...(coverageValue && { coverageValue: parseFloat(coverageValue) }),
-        ...(annualPremium && { annualPremium: parseFloat(annualPremium) }),
-        ...(startDate && { startDate: new Date(startDate) }),
-        ...(expirationDate && { expirationDate: new Date(expirationDate) }),
-        ...(status && { status }),
-        ...(coverageType && { coverageType }),
-        ...(deductible && { deductible: parseFloat(deductible) }),
-        ...(notes && { notes }),
+        ...(numero && { numero }),
+        ...(valor !== undefined && { valor: parseFloat(valor) }),
+        ...(dataInicio && { dataInicio: new Date(dataInicio) }),
+        ...(dataFim && { dataFim: new Date(dataFim) })
       },
       include: {
-        watch: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+        relogio: {
+          include: {
+            marca: true
+          }
+        }
+      }
     });
-    res.json(seguro);
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Seguro not found' });
-    }
-    res.status(500).json({ error: 'Failed to update seguro' });
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar seguro' });
   }
 };
 
-export const deleteSeguro = async (req: Request, res: Response) => {
+export const deleteSeguro = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    await prisma.insurance.update({
-      where: { id },
-      data: { active: false },
+
+    const seguro = await prisma.seguro.findUnique({
+      where: { id: parseInt(id) }
     });
-    res.json({ message: 'Seguro deleted successfully' });
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Seguro not found' });
+
+    if (!seguro) {
+      return res.status(404).json({ error: 'Seguro não encontrado' });
     }
-    res.status(500).json({ error: 'Failed to delete seguro' });
+
+    if (seguro.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    await prisma.seguro.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: 'Seguro deletado com sucesso' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao deletar seguro' });
   }
 };

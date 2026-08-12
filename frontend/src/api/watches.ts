@@ -1,35 +1,29 @@
-import client from './client';
-import type { ApiResponse, Watch } from '../types';
-
-export interface WatchFilters {
-  search?: string;
-  brandId?: string;
-  collectionId?: string;
-}
+import apiClient from './client';
+import { ApiResponse, Relogio, WatchForm } from '../types';
 
 export const watchesApi = {
-  getAll: async (filters?: WatchFilters) => {
-    const res = await client.get<ApiResponse<Watch[]>>('/watches', { params: filters });
-    return res.data;
+  list: async (params?: { search?: string; colecaoId?: string; marcaId?: string }) => {
+    const { data } = await apiClient.get<ApiResponse<Relogio[]>>('/watches', { params });
+    return data;
   },
 
-  getById: async (id: string) => {
-    const res = await client.get<ApiResponse<Watch>>(`/watches/${id}`);
-    return res.data;
+  get: async (id: string) => {
+    const { data } = await apiClient.get<ApiResponse<Relogio>>(`/watches/${id}`);
+    return data;
   },
 
-  create: async (data: Partial<Watch>) => {
-    const res = await client.post<ApiResponse<Watch>>('/watches', data);
-    return res.data;
+  create: async (payload: WatchForm) => {
+    const { data } = await apiClient.post<ApiResponse<Relogio>>('/watches', payload);
+    return data;
   },
 
-  update: async (id: string, data: Partial<Watch>) => {
-    const res = await client.put<ApiResponse<Watch>>(`/watches/${id}`, data);
-    return res.data;
+  update: async (id: string, payload: Partial<WatchForm>) => {
+    const { data } = await apiClient.put<ApiResponse<Relogio>>(`/watches/${id}`, payload);
+    return data;
   },
 
   delete: async (id: string) => {
-    const res = await client.delete<ApiResponse<null>>(`/watches/${id}`);
-    return res.data;
+    const { data } = await apiClient.delete<ApiResponse<null>>(`/watches/${id}`);
+    return data;
   },
 };

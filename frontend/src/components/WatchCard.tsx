@@ -1,93 +1,101 @@
-import { useNavigate } from 'react-router-dom';
-import type { Watch } from '../types';
-import { Watch as WatchIcon, DollarSign } from 'lucide-react';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Watch, Tag, FolderOpen, Calendar } from 'lucide-react';
+import { Relogio } from '../types';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface Props {
-  watch: Watch;
+  relogio: Relogio;
+  onDelete?: (id: string) => void;
 }
 
-const conditionColors: Record<string, string> = {
-  mint: '#22c55e',
-  excellent: '#84cc16',
-  very_good: '#eab308',
-  good: '#f97316',
-  fair: '#ef4444',
-  poor: '#6b7280',
+const condicaoBadge: Record<string, string> = {
+  'Novo': 'bg-green-100 text-green-800',
+  'Excelente': 'bg-blue-100 text-blue-800',
+  'Muito Bom': 'bg-cyan-100 text-cyan-800',
+  'Bom': 'bg-yellow-100 text-yellow-800',
+  'Regular': 'bg-orange-100 text-orange-800',
+  'Para Restauro': 'bg-red-100 text-red-800',
 };
 
-const styles: Record<string, React.CSSProperties> = {
-  card: {
-    background: '#1a1a1a',
-    border: '1px solid #2a2a2a',
-    borderRadius: 12,
-    padding: 20,
-    cursor: 'pointer',
-    transition: 'border-color 0.15s, transform 0.15s',
-  },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  brand: { fontSize: 12, color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 },
-  model: { fontSize: 16, fontWeight: 700, color: '#e5e5e5', marginTop: 2 },
-  ref: { fontSize: 12, color: '#666', marginTop: 2 },
-  badge: {
-    fontSize: 11,
-    fontWeight: 600,
-    padding: '3px 8px',
-    borderRadius: 20,
-    background: 'rgba(201,168,76,0.15)',
-    color: '#c9a84c',
-  },
-  footer: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
-  conditionDot: { width: 8, height: 8, borderRadius: '50%', display: 'inline-block', marginRight: 6 },
-  conditionText: { fontSize: 12, color: '#888' },
-  value: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#c9a84c', fontWeight: 600 },
-};
-
-export default function WatchCard({ watch }: Props) {
-  const navigate = useNavigate();
-
+const WatchCard: React.FC<Props> = ({ relogio, onDelete }) => {
   return (
-    <div
-      style={styles.card}
-      onClick={() => navigate(`/watches/${watch.id}`)}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = '#c9a84c';
-        (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)';
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = '#2a2a2a';
-        (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-      }}
-    >
-      <div style={styles.header}>
-        <div>
-          <div style={styles.brand}>{watch.brand?.name ?? '—'}</div>
-          <div style={styles.model}>{watch.model}</div>
-          {watch.referenceNumber && <div style={styles.ref}>Ref. {watch.referenceNumber}</div>}
-        </div>
-        <WatchIcon size={20} color="#c9a84c" />
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+      {/* Image */}
+      <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden">
+        {relogio.imagemUrl ? (
+          <img
+            src={relogio.imagemUrl}
+            alt={relogio.modelo}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <Watch className="w-16 h-16 text-gray-400" />
+        )}
       </div>
 
-      {watch.collection && (
-        <span style={styles.badge}>{watch.collection.name}</span>
-      )}
-
-      <div style={styles.footer}>
-        <div style={styles.conditionText}>
-          <span
-            style={{
-              ...styles.conditionDot,
-              background: conditionColors[watch.condition] ?? '#888',
-            }}
-          />
-          {watch.condition.replace('_', ' ')}
+      {/* Content */}
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">
+            {relogio.modelo}
+          </h3>
+          <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${condicaoBadge[relogio.condicao] || 'bg-gray-100 text-gray-700'}`}>
+            {relogio.condicao}
+          </span>
         </div>
-        {watch.currentValue != null && (
-          <div style={styles.value}>
-            <DollarSign size={13} />
-            {Number(watch.currentValue).toLocaleString()}
-          </div>
+
+        {relogio.referencia && (
+          <p className="text-xs text-gray-500 mb-2">Ref: {relogio.referencia}</p>
         )}
+
+        <div className="space-y-1 mb-3">
+          {relogio.marca && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+              <Tag className="w-3.5 h-3.5" />
+              <span>{relogio.marca.nome}</span>
+            </div>
+          )}
+          {relogio.colecao && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+              <FolderOpen className="w-3.5 h-3.5" />
+              <span>{relogio.colecao.nome}</span>
+            </div>
+          )}
+          {relogio.dataCompra && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{format(new Date(relogio.dataCompra), 'dd/MM/yyyy', { locale: ptBR })}</span>
+            </div>
+          )}
+        </div>
+
+        {relogio.precoCompra && (
+          <p className="text-sm font-semibold text-amber-600 mb-3">
+            {new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(Number(relogio.precoCompra))}
+          </p>
+        )}
+
+        <div className="flex gap-2">
+          <Link
+            to={`/watches/${relogio.id}`}
+            className="flex-1 text-center text-xs font-medium px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+          >
+            Ver Detalhes
+          </Link>
+          {onDelete && (
+            <button
+              onClick={() => onDelete(relogio.id)}
+              className="text-xs font-medium px-3 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              Remover
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default WatchCard;

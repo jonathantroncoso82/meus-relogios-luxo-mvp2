@@ -1,105 +1,109 @@
-import { Response, NextFunction } from 'express';
-import { validationResult } from 'express-validator';
-import prisma from '../config/database.js';
-import { AuthRequest } from '../types/index.js';
+import { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { AuthRequest } from '../types';
 
-export async function getBrands(_req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+const prisma = new PrismaClient();
+
+export const getBrands = async (req: Request, res: Response) => {
   try {
-    const brands = await prisma.brand.findMany({
-      orderBy: { name: 'asc' },
-      include: { _count: { select: { watches: true } } },
-    });
-    res.json({ success: true, data: brands });
-  } catch (err) {
-    next(err);
+    const brands = await prisma.marca.findMany();
+    res.json(brands);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar marcas' });
   }
-}
+};
 
-export async function getBrand(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export const getBrandById = async (req: Request, res: Response) => {
   try {
-    const brand = await prisma.brand.findUnique({
-      where: { id: req.params.id },
-      include: { _count: { select: { watches: true } } },
+    const { id } = req.params;
+
+    const brand = await prisma.marca.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        relogios: true
+      }
     });
+
     if (!brand) {
-      res.status(404).json({ success: false, message: 'Brand not found' });
-      return;
+      return res.status(404).json({ error: 'Marca não encontrada' });
     }
-    res.json({ success: true, data: brand });
-  } catch (err) {
-    next(err);
+
+    res.json(brand);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar marca' });
   }
-}
+};
 
-export async function createBrand(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export const createBrand = async (req: AuthRequest, res: Response) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(422).json({ success: false, errors: errors.array() });
-      return;
+    const { nome, pais, fundacao, descricao } = req.body;
+
+    if (!nome) {
+      return res.status(400).json({ error: 'Nome é obrigatório' });
     }
 
-    const { name, country, foundedYear, website, logoUrl, description } = req.body as {
-      name: string;
-      country?: string;
-      foundedYear?: number;
-      website?: string;
-      logoUrl?: string;
-      description?: string;
-    };
-
-    const brand = await prisma.brand.create({
-      data: { name, country, foundedYear, website, logoUrl, description },
+    const brand = await prisma.marca.create({
+      data: {
+        nome,
+        pais,
+        fundacao: fundacao ? parseInt(fundacao) : null,
+        descricao
+      }
     });
-    res.status(201).json({ success: true, data: brand });
-  } catch (err) {
-    next(err);
+
+    res.status(201).json(brand);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar marca' });
   }
-}
+};
 
-export async function updateBrand(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export const updateBrand = async (req: AuthRequest, res: Response) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(422).json({ success: false, errors: errors.array() });
-      return;
-    }
+    const { id } = req.params;
+    const { nome, pais, fundacao, descricao } = req.body;
 
-    const existing = await prisma.brand.findUnique({ where: { id: req.params.id } });
-    if (!existing) {
-      res.status(404).json({ success: false, message: 'Brand not found' });
-      return;
-    }
-
-    const { name, country, foundedYear, website, logoUrl, description } = req.body as {
-      name?: string;
-      country?: string;
-      foundedYear?: number;
-      website?: string;
-      logoUrl?: string;
-      description?: string;
-    };
-
-    const brand = await prisma.brand.update({
-      where: { id: req.params.id },
-      data: { name, country, foundedYear, website, logoUrl, description },
+    const brand = await prisma.marca.findUnique({
+      where: { id: parseInt(id) }
     });
-    res.json({ success: true, data: brand });
-  } catch (err) {
-    next(err);
-  }
-}
 
-export async function deleteBrand(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const existing = await prisma.brand.findUnique({ where: { id: req.params.id } });
-    if (!existing) {
-      res.status(404).json({ success: false, message: 'Brand not found' });
-      return;
+    if (!brand) {
+      return res.status(404).json({ error: 'Marca não encontrada' });
     }
-    await prisma.brand.delete({ where: { id: req.params.id } });
-    res.json({ success: true, message: 'Brand deleted' });
-  } catch (err) {
-    next(err);
+
+    const updated = await prisma.marca.update({
+      where: { id: parseInt(id) },
+      data: {
+        ...(nome && { nome }),
+        ...(pais !== undefined && { pais }),
+        ...(fundacao !== undefined && { fundacao: fundacao ? parseInt(fundacao) : null }),
+        ...(descricao !== undefined && { descricao })
+      }
+    });
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar marca' });
   }
-}
+};
+
+export const deleteBrand = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const brand = await prisma.marca.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!brand) {
+      return res.status(404).json({ error: 'Marca não encontrada' });
+    }
+
+    await prisma.marca.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: 'Marca deletada com sucesso' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao deletar marca' });
+  }
+};

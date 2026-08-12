@@ -1,18 +1,19 @@
 import { Router } from 'express';
+import { authMiddleware } from '../middleware/auth';
 import {
-  getAllAvaliacoes,
-  getAvaliacao,
+  getAvaliacoes,
+  getAvaliacaoById,
   createAvaliacao,
   updateAvaliacao,
-  deleteAvaliacao,
+  deleteAvaliacao
 } from '../controllers/avaliacoes.controller';
 
 const router = Router();
 
-router.get('/', getAllAvaliacoes);
-router.get('/:id', getAvaliacao);
-router.post('/', createAvaliacao);
-router.put('/:id', updateAvaliacao);
-router.delete('/:id', deleteAvaliacao);
+router.get('/avaliacoes', authMiddleware, getAvaliacoes);
+router.get('/avaliacoes/:id', authMiddleware, getAvaliacaoById);
+router.post('/avaliacoes', authMiddleware, createAvaliacao);
+router.put('/avaliacoes/:id', authMiddleware, updateAvaliacao);
+router.delete('/avaliacoes/:id', authMiddleware, deleteAvaliacao);
 
 export default router;

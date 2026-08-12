@@ -1,23 +1,20 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { AuthRequest, AuthPayload } from '../types/index.js';
+import { AuthRequest } from '../types';
 
-export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ success: false, message: 'No token provided' });
-    return;
-  }
-
-  const token = authHeader.split(' ')[1];
-  const secret = process.env.JWT_SECRET as string;
-
+export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const payload = jwt.verify(token, secret) as AuthPayload;
-    req.user = payload;
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'Token não fornecido' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey_change_in_production') as any;
+    req.user = decoded;
+    req.userId = decoded.id;
     next();
-  } catch {
-    res.status(401).json({ success: false, message: 'Invalid or expired token' });
+  } catch (error) {
+    res.status(401).json({ error: 'Token inválido' });
   }
-}
+};

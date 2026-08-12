@@ -1,27 +1,19 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
+import { authMiddleware } from '../middleware/auth';
 import {
   getValuations,
-  getValuation,
+  getValuationById,
   createValuation,
-} from '../controllers/valuations.controller.js';
-import { authenticate } from '../middleware/auth.js';
+  updateValuation,
+  deleteValuation
+} from '../controllers/valuations.controller';
 
 const router = Router();
 
-router.use(authenticate);
-
-router.get('/', getValuations);
-router.get('/:id', getValuation);
-
-router.post(
-  '/',
-  [
-    body('watchId').notEmpty().withMessage('Watch ID is required'),
-    body('valuationDate').isISO8601().withMessage('Valid valuation date is required'),
-    body('marketValue').isNumeric().withMessage('Market value must be a number'),
-  ],
-  createValuation
-);
+router.get('/valuations', authMiddleware, getValuations);
+router.get('/valuations/:id', authMiddleware, getValuationById);
+router.post('/valuations', authMiddleware, createValuation);
+router.put('/valuations/:id', authMiddleware, updateValuation);
+router.delete('/valuations/:id', authMiddleware, deleteValuation);
 
 export default router;

@@ -1,94 +1,63 @@
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import type { Collection } from '../types';
+import { CollectionForm as CollectionFormType } from '../types';
 
 interface Props {
-  defaultValues?: Partial<Collection>;
-  onSubmit: (data: Partial<Collection>) => void;
+  defaultValues?: Partial<CollectionFormType>;
+  onSubmit: (data: CollectionFormType) => void;
   onCancel: () => void;
-  loading?: boolean;
+  isLoading?: boolean;
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  background: '#111',
-  border: '1px solid #333',
-  borderRadius: 8,
-  padding: '10px 12px',
-  color: '#e5e5e5',
-  fontSize: 14,
-  outline: 'none',
-};
+const CollectionForm: React.FC<Props> = ({ defaultValues, onSubmit, onCancel, isLoading }) => {
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<CollectionFormType>({
+    defaultValues,
+  });
 
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 12,
-  color: '#888',
-  marginBottom: 6,
-  fontWeight: 500,
-};
-
-const fieldStyle: React.CSSProperties = { marginBottom: 16 };
-
-export default function CollectionForm({ defaultValues, onSubmit, onCancel, loading }: Props) {
-  const { register, handleSubmit } = useForm<Partial<Collection>>({ defaultValues });
+  useEffect(() => {
+    if (defaultValues) reset(defaultValues);
+  }, [defaultValues, reset]);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <div style={fieldStyle}>
-        <label style={labelStyle}>Collection Name *</label>
-        <input style={inputStyle} {...register('name', { required: true })} placeholder="e.g. Sports Watches" />
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Coleção *</label>
+        <input
+          {...register('nome', { required: 'Nome é obrigatório' })}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          placeholder="Ex: Desportivos, Clássicos..."
+        />
+        {errors.nome && <p className="text-red-500 text-xs mt-1">{errors.nome.message}</p>}
       </div>
 
-      <div style={fieldStyle}>
-        <label style={labelStyle}>Description</label>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
         <textarea
-          style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
-          {...register('description')}
-          placeholder="Collection description..."
+          {...register('descricao')}
+          rows={3}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          placeholder="Descrição da coleção..."
         />
       </div>
 
-      <div style={{ ...fieldStyle, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <input type="checkbox" id="isPublic" {...register('isPublic')} />
-        <label htmlFor="isPublic" style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer' }}>
-          Make this collection public
-        </label>
-      </div>
-
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+      <div className="flex justify-end gap-3 pt-2">
         <button
           type="button"
           onClick={onCancel}
-          style={{
-            padding: '10px 20px',
-            background: 'none',
-            border: '1px solid #333',
-            borderRadius: 8,
-            color: '#888',
-            cursor: 'pointer',
-            fontSize: 14,
-          }}
+          className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          Cancel
+          Cancelar
         </button>
         <button
           type="submit"
-          disabled={loading}
-          style={{
-            padding: '10px 24px',
-            background: '#c9a84c',
-            border: 'none',
-            borderRadius: 8,
-            color: '#000',
-            fontWeight: 700,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: 14,
-            opacity: loading ? 0.7 : 1,
-          }}
+          disabled={isLoading}
+          className="px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors"
         >
-          {loading ? 'Saving…' : 'Save Collection'}
+          {isLoading ? 'A guardar...' : 'Guardar'}
         </button>
       </div>
     </form>
   );
-}
+};
+
+export default CollectionForm;

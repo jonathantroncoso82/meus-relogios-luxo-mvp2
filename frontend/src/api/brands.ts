@@ -1,29 +1,29 @@
-import client from './client';
-import type { ApiResponse, Brand } from '../types';
+import apiClient from './client';
+import { ApiResponse, Marca, BrandForm } from '../types';
 
 export const brandsApi = {
-  getAll: async () => {
-    const res = await client.get<ApiResponse<Brand[]>>('/brands');
-    return res.data;
+  list: async (params?: { search?: string }) => {
+    const { data } = await apiClient.get<ApiResponse<Marca[]>>('/brands', { params });
+    return data;
   },
 
-  getById: async (id: string) => {
-    const res = await client.get<ApiResponse<Brand>>(`/brands/${id}`);
-    return res.data;
+  get: async (id: string) => {
+    const { data } = await apiClient.get<ApiResponse<Marca>>(`/brands/${id}`);
+    return data;
   },
 
-  create: async (data: Partial<Brand>) => {
-    const res = await client.post<ApiResponse<Brand>>('/brands', data);
-    return res.data;
+  create: async (payload: BrandForm) => {
+    const { data } = await apiClient.post<ApiResponse<Marca>>('/brands', payload);
+    return data;
   },
 
-  update: async (id: string, data: Partial<Brand>) => {
-    const res = await client.put<ApiResponse<Brand>>(`/brands/${id}`, data);
-    return res.data;
+  update: async (id: string, payload: Partial<BrandForm>) => {
+    const { data } = await apiClient.put<ApiResponse<Marca>>(`/brands/${id}`, payload);
+    return data;
   },
 
   delete: async (id: string) => {
-    const res = await client.delete<ApiResponse<null>>(`/brands/${id}`);
-    return res.data;
+    const { data } = await apiClient.delete<ApiResponse<null>>(`/brands/${id}`);
+    return data;
   },
 };

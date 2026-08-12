@@ -1,98 +1,102 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { validationResult } from 'express-validator';
-import prisma from '../config/database.js';
-import { AuthRequest } from '../types/index.js';
+import { PrismaClient } from '@prisma/client';
 
-export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
+const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+export const register = async (req: Request, res: Response) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(422).json({ success: false, errors: errors.array() });
-      return;
+    const { email, senha, nome } = req.body;
+
+    if (!email || !senha || !nome) {
+      return res.status(400).json({ error: 'Email, senha e nome são obrigatórios' });
     }
 
-    const { name, email, password } = req.body as { name: string; email: string; password: string };
-
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      res.status(409).json({ success: false, message: 'Email already registered' });
-      return;
-    }
-
-    const passwordHash = await bcrypt.hash(password, 12);
-    const user = await prisma.user.create({
-      data: { name, email, passwordHash },
-      select: { id: true, name: true, email: true, createdAt: true },
+    // Verificar se usuário já existe
+    const usuarioExistente = await prisma.usuario.findUnique({
+      where: { email }
     });
 
+    if (usuarioExistente) {
+      return res.status(409).json({ error: 'Email já cadastrado' });
+    }
+
+    // Hash da senha
+    const senhaHash = await bcrypt.hash(senha, 10);
+
+    // Criar usuário
+    const usuario = await prisma.usuario.create({
+      data: {
+        email,
+        senha: senhaHash,
+        nome
+      }
+    });
+
+    // Gerar token JWT
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' }
+      { id: usuario.id, email: usuario.email },
+      JWT_SECRET,
+      { expiresIn: '24h' }
     );
 
-    res.status(201).json({ success: true, data: { user, token } });
-  } catch (err) {
-    next(err);
+    res.status(201).json({
+      message: 'Usuário registrado com sucesso',
+      token,
+      usuario: {
+        id: usuario.id,
+        email: usuario.email,
+        nome: usuario.nome
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao registrar usuário' });
   }
-}
+};
 
-export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
+export const login = async (req: Request, res: Response) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(422).json({ success: false, errors: errors.array() });
-      return;
+    const { email, senha } = req.body;
+
+    if (!email || !senha) {
+      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
-    const { email, password } = req.body as { email: string; password: string };
+    // Buscar usuário
+    const usuario = await prisma.usuario.findUnique({
+      where: { email }
+    });
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
-      return;
+    if (!usuario) {
+      return res.status(401).json({ error: 'Email ou senha inválidos' });
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) {
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
-      return;
+    // Verificar senha
+    const senhaValida = await bcrypt.compare(senha, usuario.senha);
+
+    if (!senhaValida) {
+      return res.status(401).json({ error: 'Email ou senha inválidos' });
     }
 
+    // Gerar token JWT
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' }
+      { id: usuario.id, email: usuario.email },
+      JWT_SECRET,
+      { expiresIn: '24h' }
     );
 
     res.json({
-      success: true,
-      data: {
-        user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
-        token,
-      },
+      message: 'Login realizado com sucesso',
+      token,
+      usuario: {
+        id: usuario.id,
+        email: usuario.email,
+        nome: usuario.nome
+      }
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao fazer login' });
   }
-}
-
-export async function me(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: { id: true, name: true, email: true, avatarUrl: true, createdAt: true },
-    });
-
-    if (!user) {
-      res.status(404).json({ success: false, message: 'User not found' });
-      return;
-    }
-
-    res.json({ success: true, data: user });
-  } catch (err) {
-    next(err);
-  }
-}
+};

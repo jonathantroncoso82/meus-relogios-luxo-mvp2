@@ -1,15 +1,12 @@
-CREATE TABLE colecoes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-  nome VARCHAR(255) NOT NULL,
-  descricao TEXT,
-  tema VARCHAR(100),
-  quantidade_relogios INTEGER DEFAULT 0,
-  valor_total DECIMAL(12, 2) DEFAULT 0,
-  data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  ativo BOOLEAN DEFAULT true
+-- Migration 003: Criar tabela de coleções
+CREATE TABLE IF NOT EXISTS colecoes (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome          VARCHAR(150) NOT NULL,
+    descricao     TEXT,
+    usuario_id    UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    criado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(nome, usuario_id)
 );
 
-CREATE INDEX idx_colecoes_usuario_id ON colecoes(usuario_id);
-CREATE INDEX idx_colecoes_ativo ON colecoes(ativo);
+CREATE INDEX IF NOT EXISTS idx_colecoes_usuario ON colecoes(usuario_id);

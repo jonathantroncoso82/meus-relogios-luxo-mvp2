@@ -1,122 +1,137 @@
-import { useQuery } from '@tanstack/react-query';
-import { watchesApi } from '../api/watches';
-import { brandsApi } from '../api/brands';
-import { collectionsApi } from '../api/collections';
-import { serviceRecordsApi } from '../api/serviceRecords';
-import { useAuthStore } from '../store/authStore';
-import { Watch, Tag, FolderOpen, Wrench, DollarSign, TrendingUp } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Watch, Tag, FolderOpen, Wrench, TrendingUp, Shield, ArrowRight } from 'lucide-react';
+import apiClient from '../api/client';
+import { DashboardData, ApiResponse } from '../types';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-const styles: Record<string, React.CSSProperties> = {
-  page: { maxWidth: 1200, margin: '0 auto' },
-  greeting: { fontSize: 26, fontWeight: 700, color: '#e5e5e5', marginBottom: 4 },
-  sub: { fontSize: 14, color: '#666', marginBottom: 32 },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 40 },
-  statCard: {
-    background: '#1a1a1a',
-    border: '1px solid #2a2a2a',
-    borderRadius: 12,
-    padding: 20,
-  },
-  statIcon: { marginBottom: 12 },
-  statValue: { fontSize: 28, fontWeight: 700, color: '#c9a84c', marginBottom: 4 },
-  statLabel: { fontSize: 13, color: '#666' },
-  section: { marginBottom: 32 },
-  sectionTitle: { fontSize: 16, fontWeight: 600, color: '#e5e5e5', marginBottom: 16 },
-  recentGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 },
-  recentCard: {
-    background: '#1a1a1a',
-    border: '1px solid #2a2a2a',
-    borderRadius: 10,
-    padding: 16,
-  },
-  recentBrand: { fontSize: 11, color: '#c9a84c', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 },
-  recentModel: { fontSize: 15, fontWeight: 600, color: '#e5e5e5', marginTop: 2 },
-  recentValue: { fontSize: 13, color: '#888', marginTop: 6 },
-};
+const StatCard: React.FC<{ label: string; value: number | string; icon: React.ReactNode; color: string }> = ({ label, value, icon, color }) => (
+  <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
+      {icon}
+    </div>
+    <div>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-sm text-gray-500">{label}</p>
+    </div>
+  </div>
+);
 
-export default function DashboardPage() {
-  const user = useAuthStore((s) => s.user);
+const DashboardPage: React.FC = () => {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const { data: watchesData } = useQuery({ queryKey: ['watches'], queryFn: () => watchesApi.getAll() });
-  const { data: brandsData } = useQuery({ queryKey: ['brands'], queryFn: () => brandsApi.getAll() });
-  const { data: collectionsData } = useQuery({ queryKey: ['collections'], queryFn: () => collectionsApi.getAll() });
-  const { data: serviceData } = useQuery({ queryKey: ['service-records'], queryFn: () => serviceRecordsApi.getAll() });
+  useEffect(() => {
+    apiClient.get<ApiResponse<DashboardData>>('/usuarios/dashboard')
+      .then((res) => setData(res.data.data ?? null))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
-  const watches = watchesData?.data ?? [];
-  const brands = brandsData?.data ?? [];
-  const collections = collectionsData?.data ?? [];
-  const serviceRecords = serviceData?.data ?? [];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-500" />
+      </div>
+    );
+  }
 
-  const totalValue = watches.reduce((sum, w) => sum + (Number(w.currentValue) || 0), 0);
-  const forSale = watches.filter((w) => w.isForSale).length;
-  const recentWatches = [...watches].slice(0, 6);
-
-  const stats = [
-    { label: 'Total Watches', value: watches.length, icon: <Watch size={20} color="#c9a84c" /> },
-    { label: 'Brands', value: brands.length, icon: <Tag size={20} color="#c9a84c" /> },
-    { label: 'Collections', value: collections.length, icon: <FolderOpen size={20} color="#c9a84c" /> },
-    { label: 'Service Records', value: serviceRecords.length, icon: <Wrench size={20} color="#c9a84c" /> },
-    { label: 'For Sale', value: forSale, icon: <TrendingUp size={20} color="#c9a84c" /> },
-    {
-      label: 'Portfolio Value',
-      value: `$${totalValue.toLocaleString()}`,
-      icon: <DollarSign size={20} color="#c9a84c" />,
-    },
-  ];
+  const fmt = (v: number) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(v);
 
   return (
-    <div style={styles.page}>
-      <h1 style={styles.greeting}>Welcome, {user?.name?.split(' ')[0]} 👋</h1>
-      <p style={styles.sub}>Here's an overview of your luxury watch collection.</p>
-
-      {/* Stats */}
-      <div style={styles.grid}>
-        {stats.map((s) => (
-          <div key={s.label} style={styles.statCard}>
-            <div style={styles.statIcon}>{s.icon}</div>
-            <div style={styles.statValue}>{s.value}</div>
-            <div style={styles.statLabel}>{s.label}</div>
-          </div>
-        ))}
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-500 text-sm mt-1">Visão geral da sua colecção</p>
       </div>
 
-      {/* Recent Watches */}
-      {recentWatches.length > 0 && (
-        <div style={styles.section}>
-          <div style={styles.sectionTitle}>Recent Watches</div>
-          <div style={styles.recentGrid}>
-            {recentWatches.map((w) => (
-              <div key={w.id} style={styles.recentCard}>
-                <div style={styles.recentBrand}>{w.brand?.name}</div>
-                <div style={styles.recentModel}>{w.model}</div>
-                <div style={styles.recentValue}>
-                  {w.currentValue
-                    ? `$${Number(w.currentValue).toLocaleString()}`
-                    : w.condition.replace('_', ' ')}
-                </div>
-              </div>
-            ))}
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <StatCard label="Relógios" value={data?.resumo.totalRelogios ?? 0} icon={<Watch className="w-6 h-6 text-amber-600" />} color="bg-amber-50" />
+        <StatCard label="Marcas" value={data?.resumo.totalMarcas ?? 0} icon={<Tag className="w-6 h-6 text-blue-600" />} color="bg-blue-50" />
+        <StatCard label="Coleções" value={data?.resumo.totalColecoes ?? 0} icon={<FolderOpen className="w-6 h-6 text-purple-600" />} color="bg-purple-50" />
+        <StatCard label="Manutenções" value={data?.resumo.totalManutencoes ?? 0} icon={<Wrench className="w-6 h-6 text-green-600" />} color="bg-green-50" />
+        <StatCard label="Avaliações" value={data?.resumo.totalAvaliacoes ?? 0} icon={<TrendingUp className="w-6 h-6 text-rose-600" />} color="bg-rose-50" />
+        <StatCard label="Seguros" value={data?.resumo.totalSeguros ?? 0} icon={<Shield className="w-6 h-6 text-indigo-600" />} color="bg-indigo-50" />
+        <div className="sm:col-span-2 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+            <TrendingUp className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-white">{fmt(data?.resumo.valorTotalColecao ?? 0)}</p>
+            <p className="text-amber-100 text-sm">Valor Total da Colecção</p>
           </div>
         </div>
-      )}
+      </div>
 
-      {watches.length === 0 && (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            background: '#1a1a1a',
-            borderRadius: 16,
-            border: '1px dashed #2a2a2a',
-          }}
-        >
-          <Watch size={48} color="#333" style={{ marginBottom: 16 }} />
-          <p style={{ color: '#555', fontSize: 16 }}>Your collection is empty.</p>
-          <p style={{ color: '#444', fontSize: 13, marginTop: 8 }}>
-            Go to <strong style={{ color: '#c9a84c' }}>Watches</strong> to add your first timepiece.
-          </p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Relógios Recentes */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-900">Relógios Recentes</h2>
+            <Link to="/watches" className="text-sm text-amber-600 hover:underline flex items-center gap-1">
+              Ver todos <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          {data?.relogiosRecentes.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-8">Nenhum relógio adicionado ainda.</p>
+          ) : (
+            <div className="space-y-3">
+              {data?.relogiosRecentes.map((r) => (
+                <Link key={r.id} to={`/watches/${r.id}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    {r.imagemUrl ? (
+                      <img src={r.imagemUrl} alt={r.modelo} className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <Watch className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{r.modelo}</p>
+                    <p className="text-xs text-gray-500">{r.marca?.nome || 'Sem marca'}</p>
+                  </div>
+                  <span className="text-xs text-gray-400">{r.condicao}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Últimas Avaliações */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-900">Últimas Avaliações</h2>
+            <Link to="/valuations" className="text-sm text-amber-600 hover:underline flex items-center gap-1">
+              Ver todas <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          {data?.ultimasAvaliacoes.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-8">Nenhuma avaliação registada ainda.</p>
+          ) : (
+            <div className="space-y-3">
+              {data?.ultimasAvaliacoes.map((a) => (
+                <div key={a.id} className="flex items-center gap-3 p-2 rounded-lg">
+                  <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                    <TrendingUp className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{a.relogio?.modelo}</p>
+                    <p className="text-xs text-gray-500">
+                      {format(new Date(a.dataAvaliacao), 'dd/MM/yyyy', { locale: ptBR })}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-amber-600">
+                    {fmt(Number(a.valorAvaliado))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default DashboardPage;

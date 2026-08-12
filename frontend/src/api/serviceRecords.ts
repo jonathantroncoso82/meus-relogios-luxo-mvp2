@@ -1,31 +1,29 @@
-import client from './client';
-import type { ApiResponse, ServiceRecord } from '../types';
+import apiClient from './client';
+import { ApiResponse, Manutencao, ServiceRecordForm } from '../types';
 
 export const serviceRecordsApi = {
-  getAll: async (watchId?: string) => {
-    const res = await client.get<ApiResponse<ServiceRecord[]>>('/service-records', {
-      params: watchId ? { watchId } : undefined,
-    });
-    return res.data;
+  list: async (params?: { relogioId?: string }) => {
+    const { data } = await apiClient.get<ApiResponse<Manutencao[]>>('/service-records', { params });
+    return data;
   },
 
-  getById: async (id: string) => {
-    const res = await client.get<ApiResponse<ServiceRecord>>(`/service-records/${id}`);
-    return res.data;
+  get: async (id: string) => {
+    const { data } = await apiClient.get<ApiResponse<Manutencao>>(`/service-records/${id}`);
+    return data;
   },
 
-  create: async (data: Partial<ServiceRecord>) => {
-    const res = await client.post<ApiResponse<ServiceRecord>>('/service-records', data);
-    return res.data;
+  create: async (payload: ServiceRecordForm) => {
+    const { data } = await apiClient.post<ApiResponse<Manutencao>>('/service-records', payload);
+    return data;
   },
 
-  update: async (id: string, data: Partial<ServiceRecord>) => {
-    const res = await client.put<ApiResponse<ServiceRecord>>(`/service-records/${id}`, data);
-    return res.data;
+  update: async (id: string, payload: Partial<ServiceRecordForm>) => {
+    const { data } = await apiClient.put<ApiResponse<Manutencao>>(`/service-records/${id}`, payload);
+    return data;
   },
 
   delete: async (id: string) => {
-    const res = await client.delete<ApiResponse<null>>(`/service-records/${id}`);
-    return res.data;
+    const { data } = await apiClient.delete<ApiResponse<null>>(`/service-records/${id}`);
+    return data;
   },
 };

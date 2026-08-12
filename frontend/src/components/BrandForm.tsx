@@ -1,107 +1,81 @@
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import type { Brand } from '../types';
+import { BrandForm as BrandFormType } from '../types';
 
 interface Props {
-  defaultValues?: Partial<Brand>;
-  onSubmit: (data: Partial<Brand>) => void;
+  defaultValues?: Partial<BrandFormType>;
+  onSubmit: (data: BrandFormType) => void;
   onCancel: () => void;
-  loading?: boolean;
+  isLoading?: boolean;
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  background: '#111',
-  border: '1px solid #333',
-  borderRadius: 8,
-  padding: '10px 12px',
-  color: '#e5e5e5',
-  fontSize: 14,
-  outline: 'none',
-};
+const BrandForm: React.FC<Props> = ({ defaultValues, onSubmit, onCancel, isLoading }) => {
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<BrandFormType>({
+    defaultValues,
+  });
 
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 12,
-  color: '#888',
-  marginBottom: 6,
-  fontWeight: 500,
-};
-
-const fieldStyle: React.CSSProperties = { marginBottom: 16 };
-
-export default function BrandForm({ defaultValues, onSubmit, onCancel, loading }: Props) {
-  const { register, handleSubmit } = useForm<Partial<Brand>>({ defaultValues });
+  useEffect(() => {
+    if (defaultValues) reset(defaultValues);
+  }, [defaultValues, reset]);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <div style={fieldStyle}>
-        <label style={labelStyle}>Brand Name *</label>
-        <input style={inputStyle} {...register('name', { required: true })} placeholder="e.g. Rolex" />
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Marca *</label>
+        <input
+          {...register('nome', { required: 'Nome é obrigatório' })}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          placeholder="Ex: Rolex"
+        />
+        {errors.nome && <p className="text-red-500 text-xs mt-1">{errors.nome.message}</p>}
       </div>
 
-      <div style={fieldStyle}>
-        <label style={labelStyle}>Country</label>
-        <input style={inputStyle} {...register('country')} placeholder="e.g. Switzerland" />
-      </div>
-
-      <div style={fieldStyle}>
-        <label style={labelStyle}>Founded Year</label>
-        <input style={inputStyle} type="number" {...register('foundedYear', { valueAsNumber: true })} placeholder="e.g. 1905" />
-      </div>
-
-      <div style={fieldStyle}>
-        <label style={labelStyle}>Website</label>
-        <input style={inputStyle} {...register('website')} placeholder="https://..." />
-      </div>
-
-      <div style={fieldStyle}>
-        <label style={labelStyle}>Logo URL</label>
-        <input style={inputStyle} {...register('logoUrl')} placeholder="https://..." />
-      </div>
-
-      <div style={fieldStyle}>
-        <label style={labelStyle}>Description</label>
-        <textarea
-          style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
-          {...register('description')}
-          placeholder="Brand description..."
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">País de Origem</label>
+        <input
+          {...register('paisOrigem')}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          placeholder="Ex: Suíça"
         />
       </div>
 
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">URL do Logo</label>
+        <input
+          {...register('logoUrl')}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          placeholder="https://..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+        <textarea
+          {...register('descricao')}
+          rows={3}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          placeholder="Breve descrição da marca..."
+        />
+      </div>
+
+      <div className="flex justify-end gap-3 pt-2">
         <button
           type="button"
           onClick={onCancel}
-          style={{
-            padding: '10px 20px',
-            background: 'none',
-            border: '1px solid #333',
-            borderRadius: 8,
-            color: '#888',
-            cursor: 'pointer',
-            fontSize: 14,
-          }}
+          className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          Cancel
+          Cancelar
         </button>
         <button
           type="submit"
-          disabled={loading}
-          style={{
-            padding: '10px 24px',
-            background: '#c9a84c',
-            border: 'none',
-            borderRadius: 8,
-            color: '#000',
-            fontWeight: 700,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: 14,
-            opacity: loading ? 0.7 : 1,
-          }}
+          disabled={isLoading}
+          className="px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors"
         >
-          {loading ? 'Saving…' : 'Save Brand'}
+          {isLoading ? 'A guardar...' : 'Guardar'}
         </button>
       </div>
     </form>
   );
-}
+};
+
+export default BrandForm;

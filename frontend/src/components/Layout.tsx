@@ -1,5 +1,5 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Watch,
   LayoutDashboard,
@@ -10,97 +10,25 @@ import {
   LogOut,
   Menu,
   X,
+  Shield,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useAuthStore } from '../store/authStore';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/watches', label: 'Watches', icon: Watch },
-  { to: '/brands', label: 'Brands', icon: Tag },
-  { to: '/collections', label: 'Collections', icon: FolderOpen },
-  { to: '/service-records', label: 'Service Records', icon: Wrench },
-  { to: '/valuations', label: 'Valuations', icon: TrendingUp },
+  { to: '/watches', label: 'Relógios', icon: Watch },
+  { to: '/brands', label: 'Marcas', icon: Tag },
+  { to: '/collections', label: 'Coleções', icon: FolderOpen },
+  { to: '/service-records', label: 'Manutenções', icon: Wrench },
+  { to: '/valuations', label: 'Avaliações', icon: TrendingUp },
+  { to: '/seguros', label: 'Seguros', icon: Shield },
 ];
 
-const styles: Record<string, React.CSSProperties> = {
-  shell: { display: 'flex', minHeight: '100vh', background: '#0f0f0f' },
-  sidebar: {
-    width: 240,
-    background: '#1a1a1a',
-    borderRight: '1px solid #2a2a2a',
-    display: 'flex',
-    flexDirection: 'column',
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    height: '100vh',
-    zIndex: 100,
-    transition: 'transform 0.2s',
-  },
-  sidebarHidden: { transform: 'translateX(-240px)' },
-  logo: {
-    padding: '24px 20px',
-    borderBottom: '1px solid #2a2a2a',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-  },
-  logoText: { fontSize: 18, fontWeight: 700, color: '#c9a84c', letterSpacing: 1 },
-  nav: { flex: 1, padding: '16px 0', overflowY: 'auto' },
-  navLink: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    padding: '12px 20px',
-    color: '#888',
-    textDecoration: 'none',
-    fontSize: 14,
-    fontWeight: 500,
-    transition: 'all 0.15s',
-    borderLeft: '3px solid transparent',
-  },
-  navLinkActive: {
-    color: '#c9a84c',
-    background: 'rgba(201,168,76,0.08)',
-    borderLeft: '3px solid #c9a84c',
-  },
-  footer: { padding: '16px 20px', borderTop: '1px solid #2a2a2a' },
-  logoutBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    background: 'none',
-    border: 'none',
-    color: '#888',
-    cursor: 'pointer',
-    fontSize: 14,
-    padding: '8px 0',
-    width: '100%',
-  },
-  main: { flex: 1, marginLeft: 240, display: 'flex', flexDirection: 'column', minHeight: '100vh' },
-  topbar: {
-    height: 56,
-    background: '#1a1a1a',
-    borderBottom: '1px solid #2a2a2a',
-    display: 'flex',
-    alignItems: 'center',
-    padding: '0 24px',
-    gap: 12,
-  },
-  menuBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#888',
-    cursor: 'pointer',
-    display: 'none',
-  },
-  content: { flex: 1, padding: 24 },
-};
-
-export default function Layout() {
-  const { user, logout } = useAuthStore();
+const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { usuario, logout } = useAuthStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -108,59 +36,94 @@ export default function Layout() {
   };
 
   return (
-    <div style={styles.shell}>
+    <div className="flex h-screen bg-gray-50">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside style={{ ...styles.sidebar, ...(sidebarOpen ? {} : styles.sidebarHidden) }}>
-        <div style={styles.logo}>
-          <Watch size={22} color="#c9a84c" />
-          <span style={styles.logoText}>LuxWatch</span>
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 lg:flex lg:flex-col`}
+      >
+        {/* Logo */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-700">
+          <div className="flex items-center gap-2">
+            <Watch className="w-7 h-7 text-amber-400" />
+            <span className="font-bold text-lg tracking-tight">LuxWatch</span>
+          </div>
+          <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <nav style={styles.nav}>
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              style={({ isActive }) => ({
-                ...styles.navLink,
-                ...(isActive ? styles.navLinkActive : {}),
-              })}
-            >
-              <Icon size={18} />
-              {label}
-            </NavLink>
-          ))}
+        {/* Nav */}
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+          {navItems.map(({ to, label, icon: Icon }) => {
+            const active = location.pathname.startsWith(to);
+            return (
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                  ${active
+                    ? 'bg-amber-500 text-gray-900'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  }`}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                {label}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div style={styles.footer}>
-          <div style={{ fontSize: 12, color: '#555', marginBottom: 8 }}>
-            {user?.name}
+        {/* User */}
+        <div className="px-4 py-4 border-t border-gray-700">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-full bg-amber-500 flex items-center justify-center text-gray-900 font-bold text-sm">
+              {usuario?.nome?.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{usuario?.nome}</p>
+              <p className="text-xs text-gray-400 truncate">{usuario?.email}</p>
+            </div>
           </div>
-          <button style={styles.logoutBtn} onClick={handleLogout}>
-            <LogOut size={16} />
-            Sign out
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sair
           </button>
         </div>
       </aside>
 
       {/* Main */}
-      <div style={styles.main}>
-        <header style={styles.topbar}>
-          <button
-            style={styles.menuBtn}
-            onClick={() => setSidebarOpen((o) => !o)}
-          >
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top bar (mobile) */}
+        <header className="lg:hidden flex items-center gap-4 px-4 py-3 bg-white border-b border-gray-200">
+          <button onClick={() => setSidebarOpen(true)}>
+            <Menu className="w-6 h-6 text-gray-600" />
           </button>
-          <span style={{ color: '#c9a84c', fontWeight: 600, fontSize: 15 }}>
-            Luxury Watch Collection
-          </span>
+          <div className="flex items-center gap-2">
+            <Watch className="w-5 h-5 text-amber-500" />
+            <span className="font-bold text-gray-900">LuxWatch</span>
+          </div>
         </header>
 
-        <main style={styles.content}>
-          <Outlet />
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto p-6">
+          {children}
         </main>
       </div>
     </div>
   );
-}
+};
+
+export default Layout;

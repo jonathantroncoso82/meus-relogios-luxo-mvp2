@@ -1,133 +1,161 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { AuthRequest } from '../types';
 
 const prisma = new PrismaClient();
 
-export const getAllColecoes = async (req: Request, res: Response) => {
+export const getColecoes = async (req: AuthRequest, res: Response) => {
   try {
-    const colecoes = await prisma.collection.findMany({
-      where: { active: true },
+    const colecoes = await prisma.colecao.findMany({
+      where: { usuarioId: req.user?.id || req.userId },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+        relogios: {
+          include: {
+            marca: true
+          }
+        }
+      }
     });
+
     res.json(colecoes);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch colecoes' });
+    res.status(500).json({ error: 'Erro ao buscar coleções' });
   }
 };
 
-export const getColecaoById = async (req: Request, res: Response) => {
+export const getColecaoById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const colecao = await prisma.collection.findUnique({
-      where: { id },
+
+    const colecao = await prisma.colecao.findUnique({
+      where: { id: parseInt(id) },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+        relogios: {
+          include: {
+            marca: true
+          }
+        }
+      }
     });
+
     if (!colecao) {
-      return res.status(404).json({ error: 'Colecao not found' });
+      return res.status(404).json({ error: 'Coleção não encontrada' });
     }
+
+    if (colecao.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
     res.json(colecao);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch colecao' });
+    res.status(500).json({ error: 'Erro ao buscar coleção' });
   }
 };
 
-export const createColecao = async (req: Request, res: Response) => {
+export const getColecaoRelogios = async (req: AuthRequest, res: Response) => {
   try {
-    const { userId, name, description, theme, watchCount, totalValue } = req.body;
+    const { id } = req.params;
 
-    if (!userId || !name) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    const colecao = await prisma.colecao.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!colecao) {
+      return res.status(404).json({ error: 'Coleção não encontrada' });
     }
 
-    const colecao = await prisma.collection.create({
-      data: {
-        userId,
-        name,
-        description,
-        theme,
-        watchCount: watchCount || 0,
-        totalValue: totalValue ? parseFloat(totalValue) : null,
-      },
+    if (colecao.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    const relogios = await prisma.relogio.findMany({
+      where: { colecaoId: parseInt(id) },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+        marca: true
+      }
     });
+
+    res.json(relogios);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar relógios da coleção' });
+  }
+};
+
+export const createColecao = async (req: AuthRequest, res: Response) => {
+  try {
+    const { nome, descricao } = req.body;
+
+    if (!nome) {
+      return res.status(400).json({ error: 'Nome é obrigatório' });
+    }
+
+    const colecao = await prisma.colecao.create({
+      data: {
+        usuarioId: req.user?.id || req.userId || 0,
+        nome,
+        descricao
+      }
+    });
+
     res.status(201).json(colecao);
-  } catch (error: any) {
-    if (error.code === 'P2003') {
-      return res.status(400).json({ error: 'User not found' });
-    }
-    res.status(500).json({ error: 'Failed to create colecao' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar coleção' });
   }
 };
 
-export const updateColecao = async (req: Request, res: Response) => {
+export const updateColecao = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, theme, watchCount, totalValue } = req.body;
+    const { nome, descricao } = req.body;
 
-    const colecao = await prisma.collection.update({
-      where: { id },
+    const colecao = await prisma.colecao.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!colecao) {
+      return res.status(404).json({ error: 'Coleção não encontrada' });
+    }
+
+    if (colecao.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    const updated = await prisma.colecao.update({
+      where: { id: parseInt(id) },
       data: {
-        ...(name && { name }),
-        ...(description && { description }),
-        ...(theme && { theme }),
-        ...(watchCount !== undefined && { watchCount }),
-        ...(totalValue && { totalValue: parseFloat(totalValue) }),
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+        ...(nome && { nome }),
+        ...(descricao !== undefined && { descricao })
+      }
     });
-    res.json(colecao);
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Colecao not found' });
-    }
-    res.status(500).json({ error: 'Failed to update colecao' });
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar coleção' });
   }
 };
 
-export const deleteColecao = async (req: Request, res: Response) => {
+export const deleteColecao = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    await prisma.collection.update({
-      where: { id },
-      data: { active: false },
+
+    const colecao = await prisma.colecao.findUnique({
+      where: { id: parseInt(id) }
     });
-    res.json({ message: 'Colecao deleted successfully' });
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Colecao not found' });
+
+    if (!colecao) {
+      return res.status(404).json({ error: 'Coleção não encontrada' });
     }
-    res.status(500).json({ error: 'Failed to delete colecao' });
+
+    if (colecao.usuarioId !== (req.user?.id || req.userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    await prisma.colecao.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: 'Coleção deletada com sucesso' });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao deletar coleção' });
   }
 };
